@@ -131,18 +131,16 @@ echo -e "All requirements installed !\n"
 read -p "ID Booster : " IDBOOSTER
 read -s -p "Campus Booster password : " SUPINFO_PASSWORD
 echo ''
-read -p "GMail address : " GMAIL_ADDRESS
-read -s -p "GMail password : " GMAIL_PASSWORD
+read -p "Discord app secret : " DISCORD_SECRET
+read -p "Discord channel ID : " DISCORD_CHANNEL_ID
 echo ''
-read -p "Receiver address : " RECEIVER_ADDRESS
 
 sed -i "s/IDBOOSTER =.*/IDBOOSTER = \"$IDBOOSTER\"/" check_english_sad_supinfo.py
 sed -i "s/SUPINFO_PASSWORD =.*/SUPINFO_PASSWORD = \"$SUPINFO_PASSWORD\"/" check_english_sad_supinfo.py
-sed -i "s/GMAIL_ADDRESS =.*/GMAIL_ADDRESS = \"$GMAIL_ADDRESS\"/" check_english_sad_supinfo.py
-sed -i "s/GMAIL_PASSWORD =.*/GMAIL_PASSWORD = \"$GMAIL_PASSWORD\"/" check_english_sad_supinfo.py
-sed -i "s/RECEIVER_ADDRESS =.*/RECEIVER_ADDRESS = \"$RECEIVER_ADDRESS\"/" check_english_sad_supinfo.py
+sed -i "s/DISCORD_SECRET =.*/DISCORD_SECRET = \"$DISCORD_SECRET\"/" check_english_sad_supinfo.py
+sed -i "s/DISCORD_CHANNEL_ID =.*/DISCORD_CHANNEL_ID = \"$DISCORD_CHANNEL_ID\"/" check_english_sad_supinfo.py
 sed -i "s/BROWSER = \".*/BROWSER = \"$BROWSER\"/" check_english_sad_supinfo.py
 
-unset IDBOOSTER SUPINFO_PASSWORD GMAIL_ADDRESS GMAIL_PASSWORD RECEIVER_ADDRESS BROWSER
+unset IDBOOSTER SUPINFO_PASSWORD DISCORD_SECRET DISCORD_CHANNEL_ID BROWSER
 
 echo -e "\nInstall finished !"
