@@ -64,7 +64,7 @@ def send_discordMessage(place_time, client):
 
 	embed = discord.Embed(title=subject, colour=discord.Colour(0x8aa3cc), description=body)
 	channel = client.get_channel(DISCORD_CHANNEL_ID)
-	await channel.send_message(message.channel, embed=embed)
+	client.send_message(message.channel, embed=embed)
 
 
 def get_html_site():
