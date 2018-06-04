@@ -13,6 +13,7 @@ if "" in (IDBOOSTER, SUPINFO_PASSWORD, DISCORD_SECRET, DISCORD_CHANNEL_ID, BROWS
 	print("Please run INSTALL.sh first !")
 	exit(1)
 
+client = discord.Client()
 
 def check_available_slot(inner_html):
 	if "<span style=\"color: green;\">" in inner_html:
