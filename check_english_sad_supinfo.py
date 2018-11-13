@@ -1,17 +1,14 @@
 #!/usr/bin/python3
-import discord
-import time
 from selenium import webdriver
+import discord
+import asyncio
+import time
 
 IDBOOSTER = ""
 SUPINFO_PASSWORD = ""
+BROWSER = "Chrome"
 DISCORD_SECRET = ""
 DISCORD_CHANNEL_ID = ""
-BROWSER = ""
-
-if "" in (IDBOOSTER, SUPINFO_PASSWORD, DISCORD_SECRET, DISCORD_CHANNEL_ID, BROWSER):
-	print("Please run INSTALL.sh first !")
-	exit(1)
 
 client = discord.Client()
 
@@ -20,7 +17,6 @@ def check_available_slot(inner_html):
 		return True
 	else:
 		return False
-
 
 def get_date(inner_html):
 	if "<span style=\"color: green;\">" not in inner_html:
@@ -55,30 +51,28 @@ def get_date(inner_html):
 	else:
 		return str(inner_html[i + 18:i + 20] + " " + date)
 
-def send_discordMessage(place_time, client):
-	subject = "[English - Check] " + str(len(place_time)) + " slot(s) available !"
-	body = "They are " + str(len(place_time)) + " slot(s) available on http://english.sad.supinfo.com/\n\n"
+def create_message(place_time):
+	slotAvailable = len(place_time)
+
+	subject = "[English - Check] " + str(slotAvailable) + " slot(s) available !"
+	body = "@everyone They are " + str(slotAvailable) + " slot(s) available on http://english.sad.supinfo.com/\n\n"
 
 	for slot_time in place_time:
 		body += "The " + slot_time + "\n\n"
 
-	embed = discord.Embed(title=subject, colour=discord.Colour(0x8aa3cc), description=body)
-	channel = client.get_channel(DISCORD_CHANNEL_ID)
-	client.send_message(message.channel, embed=embed)
-
+	return {
+		'subject': subject,
+		'body': body,
+		'available': slotAvailable
+	}
 
 def get_html_site():
-	if BROWSER == "firefox":
-		options = webdriver.FirefoxOptions()
-		options.add_argument("--headless")
-		browser = webdriver.Firefox(firefox_options=options)
-	elif BROWSER in ("chrome", "chromium"):
-		options = webdriver.ChromeOptions()
-		options.add_argument("--headless")
-		browser = webdriver.Chrome(chrome_options=options)
+	options = webdriver.ChromeOptions()
+	options.add_argument("--headless")
+	browser = webdriver.Chrome(options=options)
 
 	# Go to the English website
-	browser.get("http://english.sad.supinfo.com")
+	browser.get("http://english.sad.supinfo.com/default/login")
 
 	time.sleep(2)
 
@@ -87,16 +81,20 @@ def get_html_site():
 	id_booster.send_keys(IDBOOSTER)
 
 	# Log in to the website
-	button = browser.find_element_by_xpath("//input[@value='Connexion']")
+	button = browser.find_element_by_xpath("//input[@value='Connexion'][@type='submit']")
 	button.click()
 
 	time.sleep(2)
+
+	# Find and input the IDBOOSTER
+	id_booster = browser.find_element_by_name("Id")
+	id_booster.send_keys(IDBOOSTER)
 
 	# Log in to the SSO
 	password = browser.find_element_by_id("Password")
 	password.send_keys(SUPINFO_PASSWORD)
 
-	button = browser.find_element_by_id("LoginButton")
+	button = browser.find_element_by_xpath("//button[@name='button'][@value='login']")
 	button.click()
 
 	time.sleep(2)
@@ -108,29 +106,45 @@ def get_html_site():
 
 	return browser
 
-def main(client):
-	browser = get_html_site()
 
-	slot_time = []
+@client.event
+async def on_message(message):
+	if message.author == client.user:
+		return
 
-	# Check for the current month and the 4 next ones
-	for i in range(5):
-		if i != 0:
-			next_month_button = browser.find_element_by_xpath("//*[contains(text(),'>')]")
-			next_month_button.click()
+	if message.content.startswith('!english init'):
+		while True:
+			print('Run')
+			browser = get_html_site()
 
-		inner_html = browser.execute_script("return document.body.innerHTML")
+			slot_time = []
 
-		if check_available_slot(inner_html):
-			slot_time.append(get_date(inner_html))
+			# Check for the current month and the 4 next ones
+			for i in range(5):
+				if i != 0:
+					next_month_button = browser.find_element_by_xpath("//*[contains(text(),'>')]")
+					next_month_button.click()
 
-	browser.quit()
+				inner_html = browser.execute_script("return document.body.innerHTML")
 
-	if not slot_time:
-		print("Found " + str(len(slot_time)) + "slot(s) available !")
-		send_discordMessage(slot_time, client)
-	else:
-		print("Nothing found ...")
+				if check_available_slot(inner_html):
+					slot_time.append(get_date(inner_html))
+
+			browser.quit()
+
+			if not slot_time:
+				print("Found " + str(len(slot_time)) + " slot(s) available !")
+				msg = create_message(slot_time)
+				print(str(msg))
+
+				if msg['slotAvailable'] > 0:
+					embed = discord.Embed(title=msg['subject'], colour=discord.Colour(0x8aa3cc), description=msg['body'])
+					channel = client.get_channel(DISCORD_CHANNEL_ID)
+					await client.send_message(channel, embed=embed)
+			else:
+				print("Nothing found ...")
+			time.sleep(60 * 4)
+
 
 @client.event
 async def on_ready():
@@ -138,8 +152,6 @@ async def on_ready():
 	print(client.user.name)
 	print(client.user.id)
 	print('------')
-	if not discord.opus.is_loaded():
-		discord.opus.load_opus()
+
 
 client.run(DISCORD_SECRET)
-main(client)
