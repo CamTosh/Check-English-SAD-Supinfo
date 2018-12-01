@@ -3,6 +3,8 @@
 ## Synopsis :
 Log's into your [English](https://english.sad.supinfo.com) page, check if new slots for debates are available, send you a discord message if there is any slot available !
 
+![](screenshot.png)
+
 ## Requirements :
 - `python3`
 - `python-pip`
@@ -17,3 +19,4 @@ Log's into your [English](https://english.sad.supinfo.com) page, check if new sl
 
 ## Status :
 - [x] Work for **A.Sc.1** / **A.Sc.2** / **B.Sc.1** / **M.Sc.1** / **M.Sc.2**
+

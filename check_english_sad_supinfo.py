@@ -1,64 +1,55 @@
 #!/usr/bin/python3
 from selenium import webdriver
+from bs4 import BeautifulSoup
+import re
+import json
+import pendulum
+
 import discord
 import asyncio
 import time
 
 IDBOOSTER = ""
 SUPINFO_PASSWORD = ""
-BROWSER = "Chrome"
 DISCORD_SECRET = ""
 DISCORD_CHANNEL_ID = ""
 
 client = discord.Client()
 
-def check_available_slot(inner_html):
-	if "<span style=\"color: green;\">" in inner_html:
-		return True
-	else:
-		return False
+# Get JSON slots on <script> tags
+def check_available_slots(inner_html):
+	bs = BeautifulSoup(inner_html, 'html.parser')
+	scriptElements = bs.find_all('script')
+	el = scriptElements[-2].text
 
-def get_date(inner_html):
-	if "<span style=\"color: green;\">" not in inner_html:
-		return False
+	available = json.loads(re.search("(?<=var availabilities =).*?(?=;)", el).group())
+	registeredAvailabilities = json.loads(re.search("(?<=var registeredAvailabilities =).*?(?=;)", el).group())
 
-	# Get the Year
-	i = inner_html.index("2018</strong>")
-	i_end = i + 4
+	slots = []
+	
+	for slot in available:
+		if slot not in slots:
+			slots.append(slot)
 
-	# Get the month
-	while inner_html[i] != ">":
-		i -= 1
+	for slot in registeredAvailabilities:
+		if slot not in slots:
+			slots.append(slot)
 
-	# Get the month and year
-	date = str(inner_html[i + 1:i_end])
+	return slots
 
-	# Get the time
-	i = inner_html.index("<span style=\"color: green;\">")
-	slot_time = inner_html[i + 28: i + 30] + "h to " + inner_html[i + 37: i + 39] + "h"
+# Format date
+def get_date(slot):
+	slot_time = pendulum.parse(slot, tz='Europe/Paris')
+	return slot_time.format('dddd DD [of] MMMM YYYY HH:mm') + " - " + str(int(slot[-8:][0:2]) + 2) + ":00"
 
-	# Get the day number
-	i = inner_html.index("<span style=\"color: green;\">")
-
-	while inner_html[i:i + 18] != "<span class=\"day\">":
-		i += 1
-
-	# Add some text
-	date += " from " + slot_time
-
-	if inner_html[i + 19] == "<":
-		return str(inner_html[i + 18] + " " + date)
-	else:
-		return str(inner_html[i + 18:i + 20] + " " + date)
-
-def create_message(place_time):
-	slotAvailable = len(place_time)
-
-	subject = "[English - Check] " + str(slotAvailable) + " slot(s) available !"
+# Create discord message content
+def create_message(slots):
+	slotAvailable = len(slots)
+	subject = "[English] " + str(slotAvailable) + " slot(s) available !"
 	body = "@everyone They are " + str(slotAvailable) + " slot(s) available on http://english.sad.supinfo.com/\n\n"
 
-	for slot_time in place_time:
-		body += "The " + slot_time + "\n\n"
+	for slot_time in sorted(slots, key=lambda k: k['beginDate']):
+		body += "The " + get_date(slot_time['beginDate']) + "\n"
 
 	return {
 		'subject': subject,
@@ -107,6 +98,7 @@ def get_html_site():
 	return browser
 
 
+
 @client.event
 async def on_message(message):
 	if message.author == client.user:
@@ -114,35 +106,28 @@ async def on_message(message):
 
 	if message.content.startswith('!english init'):
 		while True:
-			print('Run')
+			print("run")
 			browser = get_html_site()
 
-			slot_time = []
+			next_month_button = browser.find_element_by_xpath("//*[contains(text(),'>')]")
+			next_month_button.click()
 
-			# Check for the current month and the 4 next ones
-			for i in range(5):
-				if i != 0:
-					next_month_button = browser.find_element_by_xpath("//*[contains(text(),'>')]")
-					next_month_button.click()
-
-				inner_html = browser.execute_script("return document.body.innerHTML")
-
-				if check_available_slot(inner_html):
-					slot_time.append(get_date(inner_html))
+			inner_html = browser.execute_script("return document.body.innerHTML")	
+			slots = check_available_slots(inner_html)
 
 			browser.quit()
 
-			if not slot_time:
-				print("Found " + str(len(slot_time)) + " slot(s) available !")
-				msg = create_message(slot_time)
-				print(str(msg))
+			if len(slots):
+				print("Found " + str(len(slots)) + " slot(s) available !")		
+				msg = create_message(slots)
 
-				if msg['slotAvailable'] > 0:
+				if msg['available'] > 0:
 					embed = discord.Embed(title=msg['subject'], colour=discord.Colour(0x8aa3cc), description=msg['body'])
 					channel = client.get_channel(DISCORD_CHANNEL_ID)
 					await client.send_message(channel, embed=embed)
 			else:
 				print("Nothing found ...")
+
 			time.sleep(60 * 4)
 
 
